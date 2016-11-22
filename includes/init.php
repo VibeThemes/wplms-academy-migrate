@@ -136,6 +136,8 @@ class WPLMS_ACADEMY_INIT{
 
         update_option('wplms_academy_migration',1);
 
+        $this->migrate_units();
+
         print_r(json_encode($json));
         die();
     }
@@ -145,6 +147,56 @@ class WPLMS_ACADEMY_INIT{
             _e('Security check Failed. Contact Administrator.','wplms-am');
             die();
         }
+
+        $this->migrate_course_settings($_POST['id']);
+        $this->build_curriculum($_POST['id']);
+    }
+
+    function migrate_units(){
+    	global $wpdb;
+    	$wpdb->query("UPDATE {$wpdb->posts} SET post_type = 'unit' WHERE post_type = 'lesson'");
+    }
+
+    function migrate_course_settings($course_id){
+        $max_students = get_post_meta($course_id,'_course_capacity',true);
+        if(!empty($max_students)){
+            update_post_meta($course_id,'vibe_max_students',$max_students);
+        }
+
+        $vibe_students = get_post_meta($course_id,'_course_popularity',true);
+        if(!empty($vibe_students)){
+            update_post_meta($course_id,'vibe_students',$vibe_students);
+        }
+
+        $course_price = get_post_meta($course_id,'_course_status',true);
+        if(!empty($course_price)){
+            if($course_price == 'premium'){
+                $course_product = get_post_meta($course_id,'_course_product',true);
+                if(!empty($course_product)){
+                    update_post_meta($course_id,'vibe_course_free','H');
+                    update_post_meta($course_id,'vibe_product',$course_product);
+                }
+            }
+            if($course_price == 'private'){
+                update_post_meta($course_id,'vibe_course_free','H');
+            }
+            if($course_price == 'free'){
+                update_post_meta($course_id,'vibe_course_free','S');
+            }
+        }
+
+        $rating = get_post_meta($course_id,'_course_rating',true);
+        if(!empty($rating)){
+            //
+        }
+    }
+
+    function build_curriculum($course_id){
+        global $wpdb;
+        $this->curriculum = array();
+        $units = $wpdb->get_results("SELECT m.post_id as id FROM {$wpdb->postmeta} as m LEFT JOIN {$wpdb->posts} as p ON p.id = m.post_id WHERE m.meta_value = $course_id AND m.meta_key = '_lesson_course' ORDER BY p.menu_order ASC");
+
+        update_post_meta($course_id,'vibe_course_curriculum',$this->curriculum);
     }
 }
 
