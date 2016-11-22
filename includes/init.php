@@ -195,8 +195,48 @@ class WPLMS_ACADEMY_INIT{
         global $wpdb;
         $this->curriculum = array();
         $units = $wpdb->get_results("SELECT m.post_id as id FROM {$wpdb->postmeta} as m LEFT JOIN {$wpdb->posts} as p ON p.id = m.post_id WHERE m.meta_value = $course_id AND m.meta_key = '_lesson_course' ORDER BY p.menu_order ASC");
+        if(!empty($units)){
+            foreach($units as $unit){
+                $this->curriculum[] = $unit->id;
+                $this->migrate_unit_settings($unit->id);
+                $this->migrate_quizzes($unit->id);
+            }
+        }
 
         update_post_meta($course_id,'vibe_course_curriculum',$this->curriculum);
+    }
+
+    function migrate_unit_settings($unit_id){
+        $unit_free = get_post_meta($unit_id,'_lesson_status',true);
+        if(!empty($unit_free)){
+            if($unit_free == 'free'){
+                update_post_meta($unit_id,'vibe_free','S');
+            }else{
+                update_post_meta($unit_id,'vibe_free','H');
+            }
+        }
+    }
+
+    function migrate_quizzes($unit_id){
+        global $wpdb;
+        $quizzes = $wpdb->get_results("SELECT m.post_id as id FROM {$wpdb->postmeta} as m LEFT JOIN {$wpdb->posts} as p ON p.id = m.post_id WHERE m.meta_value = $unit_id AND m.meta_key = '_quiz_lesson'");
+        if(!empty($quizzes)){
+            foreach($quizzes as $quiz){
+                $this->curriculum[] = $quiz->id;
+                $this->migrate_quiz_settings($quiz->id);
+            }
+        }
+    }
+
+    function migrate_quiz_settings($quiz_id){
+        $questions = get_post_meta($quiz_id,'_quiz_questions',true);
+        if(!empty($questions)){
+            $this->migrate_quiz_questions($quiz_id,$questions);
+        }
+    }
+
+    function migrate_quiz_questions($quiz_id,$questions){
+        //
     }
 }
 
