@@ -230,13 +230,39 @@ class WPLMS_ACADEMY_INIT{
 
     function migrate_quiz_settings($quiz_id){
         $questions = get_post_meta($quiz_id,'_quiz_questions',true);
+        $questions = unserialize($questions);
         if(!empty($questions)){
             $this->migrate_quiz_questions($quiz_id,$questions);
         }
     }
 
     function migrate_quiz_questions($quiz_id,$questions){
-        //
+        global $post;
+        $author_id = $post->post_author;
+        foreach($questions as $question){
+            if(!empty($question['title'])){
+                $insert_question = array(
+                        'post_title' => $question['title'],
+                        'post_content' => $question['title'],
+                        'post_author' => $author_id,
+                        'post_status' => 'publish',
+                        'comment_status' => 'open',
+                        'post_type' => 'question'
+                    );
+
+                $question_id = wp_insert_post( $insert_question, true);
+            }
+
+            if(!empty($question['type'])){
+                if($question['type'] == 'string'){
+                    update_post_meta($question_id,'vibe_question_type','smalltext');
+                }else{
+                    update_post_meta($question_id,'vibe_question_type',$question['type']);
+                }
+            }
+
+            if()
+        }
     }
 }
 
