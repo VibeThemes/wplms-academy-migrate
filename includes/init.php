@@ -268,8 +268,11 @@ class WPLMS_ACADEMY_INIT{
 
         $rating = get_post_meta($course_id,'_course_rating',true);
         if(!empty($rating)){
-            //
+            update_post_meta($course_id,'average_rating',$rating);
         }
+
+        update_post_meta($course_id,'vibe_duration',999);
+        update_post_meta($course_id,'vibe_course_duration_parameter',86400);
     }
 
     function build_curriculum($course_id){
@@ -296,6 +299,9 @@ class WPLMS_ACADEMY_INIT{
                 update_post_meta($unit_id,'vibe_free','H');
             }
         }
+
+        update_post_meta($unit_id,'vibe_duration',999);
+        update_post_meta($unit_id,'vibe_unit_duration_parameter',86400);
     }
 
     function migrate_quizzes($unit_id){
@@ -315,6 +321,9 @@ class WPLMS_ACADEMY_INIT{
         if(!empty($questions)){
             $this->migrate_quiz_questions($quiz_id,$questions);
         }
+
+        update_post_meta($quiz_id,'vibe_duration',999);
+        update_post_meta($quiz_id,'vibe_quiz_duration_parameter',86400);
     }
 
     function migrate_quiz_questions($quiz_id,$questions){
