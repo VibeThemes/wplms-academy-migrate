@@ -26,8 +26,14 @@ class WPLMS_ACADEMY_INIT{
         if ('Academy' == $theme->name || 'Academy' == $theme->parent_theme){
         	add_action( 'admin_notices',array($this,'migration_notice' ));
         	add_action('wp_ajax_migration_am_courses',array($this,'migration_am_courses'));
-
             add_action('wp_ajax_migration_am_course_to_wplms',array($this,'migration_am_course_to_wplms'));
+        }
+
+        $this->migration_status = get_option('wplms_academy_migration');
+        if(('WPLMS' == $theme->name || 'WPLMS' == $theme->parent_theme) && !empty($this->migration_status)){
+            add_action( 'admin_notices',array($this,'revert_migration' ));
+            add_action('wp_ajax_revert_migrated_courses',array($this,'revert_migrated_courses'));
+            add_action('wp_ajax_dismiss_message',array($this,'dismiss_message'));
         }
     }
 
@@ -121,6 +127,57 @@ class WPLMS_ACADEMY_INIT{
         }
     }
 
+    function revert_migration(){
+        $this->revert_status = get_option('wplms_academy_migration_reverted');
+        if(empty($this->revert_status)){
+            ?>
+            <div id="migration_academy_courses_revert" class="update-nag notice ">
+               <p id="revert_message"><?php printf( __('Academy Courses migrated to WPLMS: Want to revert changes %s Revert Changes Now %s Otherwise dismiss this notice.', 'wplms-am' ),'<a id="begin_revert_migration" class="button primary">','</a><a id="dismiss_message" href=""><i class="fa fa-times-circle-o"></i>Dismiss</a>'); ?>
+               </p>
+            </div>
+            <style>
+                #migration_academy_courses_revert{width:97%;} 
+                #dismiss_message {float:right;padding:5px 10px 10px 10px;color:#e00000;}
+                #dismiss_message i {padding-right:3px;}
+            </style>
+            <?php wp_nonce_field('security','security'); ?>
+            <script>
+                jQuery(document).ready(function($){
+                    $('#begin_revert_migration').on('click',function(){
+                        $.ajax({
+                            type: "POST",
+                            url: ajaxurl,
+                            data: { action: 'revert_migrated_courses', 
+                                      security: $('#security').val(),
+                                    },
+                            cache: false,
+                            success: function () {
+                                $('#migration_academy_courses_revert').removeClass('update-nag');
+                                $('#migration_academy_courses_revert').addClass('updated');
+                                $('#migration_academy_courses_revert').html('<p id="revert_message">'+'<?php _e('WPLMS - ACADEMY MIGRATION : Migrated courses Reverted !', 'wplms-am' ); ?>'+'</p>');
+                            }
+                        });
+                    });
+                    $('#dismiss_message').on('click',function(){
+                        $.ajax({
+                            type: "POST",
+                            url: ajaxurl,
+                            data: { action: 'dismiss_message', 
+                                      security: $('#security').val(),
+                                    },
+                            cache: false,
+                            success: function () {
+                                
+                            }
+                        });
+                    });
+                });
+            </script>
+            <?php
+            return;
+        }
+    }
+
     function migration_am_courses(){
     	if ( !isset($_POST['security']) || !wp_verify_nonce($_POST['security'],'security') || !is_user_logged_in()){
             _e('Security check Failed. Contact Administrator.','wplms-am');
@@ -142,6 +199,25 @@ class WPLMS_ACADEMY_INIT{
         die();
     }
 
+    function revert_migrated_courses(){
+        if ( !isset($_POST['security']) || !wp_verify_nonce($_POST['security'],'security') || !is_user_logged_in()){
+            _e('Security check Failed. Contact Administrator.','wplms-am');
+            die();
+        }
+        update_option('wplms_academy_migration_reverted',1);
+        $this->revert_migrated_posts();
+        die();
+    }
+
+    function dismiss_message(){
+        if ( !isset($_POST['security']) || !wp_verify_nonce($_POST['security'],'security') || !is_user_logged_in()){
+            _e('Security check Failed. Contact Administrator.','wplms-am');
+            die();
+        }
+        update_option('wplms_academy_migration_reverted',1);
+        die();
+    }
+
     function migration_am_course_to_wplms(){
     	if ( !isset($_POST['security']) || !wp_verify_nonce($_POST['security'],'security') || !is_user_logged_in()){
             _e('Security check Failed. Contact Administrator.','wplms-am');
@@ -155,6 +231,11 @@ class WPLMS_ACADEMY_INIT{
     function migrate_units(){
     	global $wpdb;
     	$wpdb->query("UPDATE {$wpdb->posts} SET post_type = 'unit' WHERE post_type = 'lesson'");
+    }
+
+    function revert_migrated_posts(){
+        global $wpdb;
+        $wpdb->query("UPDATE {$wpdb->posts} SET post_type = 'lesson' WHERE post_type = 'unit'");
     }
 
     function migrate_course_settings($course_id){
@@ -261,7 +342,22 @@ class WPLMS_ACADEMY_INIT{
                 }
             }
 
-            if()
+            $question_options = array();
+            $correct_answers = array();
+            if(!empty($question['answers'])){
+                foreach($question['answers'] as $key => $val){
+                    if(!empty($val['title'])){
+                        $question_options[] = $val['title'];
+                        if(isset($val['result'])){
+                            $correct_answers[] = $val['title'];
+                        }
+                    }
+                }
+
+                update_post_meta($question_id,'vibe_question_options',$question_options);
+                $correct_answer = implode(',',$correct_answers);
+                update_post_meta($question_id,'vibe_question_answer',$correct_answer);
+            }
         }
     }
 }
