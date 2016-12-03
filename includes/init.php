@@ -193,7 +193,7 @@ class WPLMS_ACADEMY_INIT{
 
         update_option('wplms_academy_migration',1);
 
-        $this->migrate_units();
+        $this->migrate_units_and_taxonomy();
 
         print_r(json_encode($json));
         die();
@@ -228,14 +228,16 @@ class WPLMS_ACADEMY_INIT{
         $this->build_curriculum($_POST['id']);
     }
 
-    function migrate_units(){
+    function migrate_units_and_taxonomy(){
     	global $wpdb;
     	$wpdb->query("UPDATE {$wpdb->posts} SET post_type = 'unit' WHERE post_type = 'lesson'");
+        $wpdb->query("UPDATE {$wpdb->term_taxonomy} SET taxonomy = 'course-cat' WHERE taxonomy = 'course_category'");
     }
 
     function revert_migrated_posts(){
         global $wpdb;
         $wpdb->query("UPDATE {$wpdb->posts} SET post_type = 'lesson' WHERE post_type = 'unit'");
+        $wpdb->query("UPDATE {$wpdb->term_taxonomy} SET taxonomy = 'course_category' WHERE taxonomy = 'course-cat'");
     }
 
     function migrate_course_settings($course_id){
@@ -283,7 +285,7 @@ class WPLMS_ACADEMY_INIT{
             foreach($units as $unit){
                 $this->curriculum[] = $unit->id;
                 $this->migrate_unit_settings($unit->id);
-                $this->migrate_quizzes($unit->id);
+                $this->migrate_quizzes($course_id,$unit->id);
             }
         }
 
@@ -300,35 +302,37 @@ class WPLMS_ACADEMY_INIT{
             }
         }
 
-        update_post_meta($unit_id,'vibe_duration',999);
-        update_post_meta($unit_id,'vibe_unit_duration_parameter',86400);
+        update_post_meta($unit_id,'vibe_duration',10);
+        update_post_meta($unit_id,'vibe_unit_duration_parameter',60);
     }
 
-    function migrate_quizzes($unit_id){
+    function migrate_quizzes($course_id,$unit_id){
         global $wpdb;
         $quizzes = $wpdb->get_results("SELECT m.post_id as id FROM {$wpdb->postmeta} as m LEFT JOIN {$wpdb->posts} as p ON p.id = m.post_id WHERE m.meta_value = $unit_id AND m.meta_key = '_quiz_lesson'");
         if(!empty($quizzes)){
             foreach($quizzes as $quiz){
                 $this->curriculum[] = $quiz->id;
-                $this->migrate_quiz_settings($quiz->id);
+                $this->migrate_quiz_settings($course_id,$quiz->id);
             }
         }
     }
 
-    function migrate_quiz_settings($quiz_id){
+    function migrate_quiz_settings($course_id,$quiz_id){
         $questions = get_post_meta($quiz_id,'_quiz_questions',true);
-        $questions = unserialize($questions);
         if(!empty($questions)){
             $this->migrate_quiz_questions($quiz_id,$questions);
         }
 
-        update_post_meta($quiz_id,'vibe_duration',999);
-        update_post_meta($quiz_id,'vibe_quiz_duration_parameter',86400);
+        update_post_meta($quiz_id,'vibe_quiz_course',$course_id);
+        update_post_meta($quiz_id,'vibe_duration',20);
+        update_post_meta($quiz_id,'vibe_quiz_duration_parameter',60);
+        update_post_meta($quiz_id,'vibe_quiz_auto_evaluate','S');
     }
 
     function migrate_quiz_questions($quiz_id,$questions){
         global $post;
         $author_id = $post->post_author;
+        $quiz_questions = array('ques'=>array(),'marks'=>array());
         foreach($questions as $question){
             if(!empty($question['title'])){
                 $insert_question = array(
@@ -339,8 +343,9 @@ class WPLMS_ACADEMY_INIT{
                         'comment_status' => 'open',
                         'post_type' => 'question'
                     );
-
-                $question_id = wp_insert_post( $insert_question, true);
+                $question_id = wp_insert_post( $insert_question );
+                $quiz_questions['ques'][]=$question_id;
+                $quiz_questions['marks'][]=1;
             }
 
             if(!empty($question['type'])){
@@ -368,6 +373,8 @@ class WPLMS_ACADEMY_INIT{
                 update_post_meta($question_id,'vibe_question_answer',$correct_answer);
             }
         }
+
+        update_post_meta($quiz_id,'vibe_quiz_questions',$quiz_questions);
     }
 }
 
