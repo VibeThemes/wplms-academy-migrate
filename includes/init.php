@@ -39,7 +39,10 @@ class WPLMS_ACADEMY_INIT{
 
     function migration_notice(){
     	$this->migration_status = get_option('wplms_academy_migration');
-    	$check = 0;
+
+    	$check = 1;
+
+        if(!function_exists('woocommerce')){
         ?>
         <div class="welcome-panel" id="welcome_am_panel" style="padding-bottom:20px;width:96%">
             <h1>Please note: Woocommerce must be activated if using paid courses.</h1>
@@ -49,6 +52,8 @@ class WPLMS_ACADEMY_INIT{
             </form>
         </div>
         <?php
+        }
+
         if(isset($_POST['am_click'])){
             $check = 1;
             ?> <style> #welcome_am_panel{display:none;} </style> <?php
