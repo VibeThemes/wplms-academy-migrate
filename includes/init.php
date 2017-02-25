@@ -40,7 +40,11 @@ class WPLMS_ACADEMY_INIT{
     function migration_notice(){
     	$this->migration_status = get_option('wplms_academy_migration');
 
-    	$check = 1;
+    	if(!empty($this->migration_status)){
+            return;
+        }
+
+        $check = 1;
 
         if(!function_exists('woocommerce')){
         ?>
@@ -59,7 +63,7 @@ class WPLMS_ACADEMY_INIT{
             ?> <style> #welcome_am_panel{display:none;} </style> <?php
         } 
         
-        if(empty($this->migration_status) && $check){
+        if($check){
         	?>
             <div id="migration_academy_courses" class="error notice ">
                <p id="am_message"><?php printf( __('Migrate academy coruses to WPLMS %s Begin Migration Now %s', 'wplms-am' ),'<a id="begin_wplms_academy_migration" class="button primary">','</a>'); ?>
