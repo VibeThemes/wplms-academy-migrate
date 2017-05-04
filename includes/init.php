@@ -47,12 +47,13 @@ class WPLMS_ACADEMY_INIT{
         $check = 1;
 
         if(!function_exists('woocommerce')){
+            $check = 0;
         ?>
         <div class="welcome-panel" id="welcome_am_panel" style="padding-bottom:20px;width:96%">
-            <h1>Please note: Woocommerce must be activated if using paid courses.</h1>
-            <p>Please click on the button below to proceed to migration proccess</p>
+            <h1><?php echo __('Please note: Woocommerce must be activated if using paid courses.','wplms-am'); ?></h1>
+            <p><?php echo __('Please click on the button below to proceed to migration proccess','wplms-am'); ?></p>
             <form method="POST">
-                <input name="am_click" type="submit" value="Click Here" class="button">
+                <input name="am_click" type="submit" value="<?php echo __('Click Here','wplms-am'); ?>" class="button">
             </form>
         </div>
         <?php
